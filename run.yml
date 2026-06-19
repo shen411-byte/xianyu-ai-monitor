@@ -16,3 +16,4 @@ jobs:
 
       - name: run python
         run: python monitor.py
+# force trigger refresh
