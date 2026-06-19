@@ -11,3 +11,4 @@ r = requests.post(
 
 print("状态码:", r.status_code)
 print(r.text)
+print("cron test wake")
