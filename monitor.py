@@ -1,6 +1,6 @@
 import requests
 
-SCKEY = "你的Key"
+SCKEY = "SCT366877TkcjPwBYTLfxaz5oD3jF8Xru6"
 
 print("🚀 Python started")
 
