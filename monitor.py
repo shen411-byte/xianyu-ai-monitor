@@ -4,7 +4,6 @@ SCKEY = "SCT366877TkcjPwBYTLfxaz5oD3jF8Xru6"
 KEYWORD = "王国之泪"
 MAX_SCORE = 75
 
-
 def send_wechat(title, content):
     url = f"https://sctapi.ftqq.com/{SCKEY}.send"
     requests.post(url, data={"title": title, "desp": content})
