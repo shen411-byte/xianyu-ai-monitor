@@ -3,7 +3,7 @@ import requests
 # ====== 只改这里 ======
 SCKEY = "SCT366877TkcjPwBYTLfxaz5oD3jF8Xru6"
 KEYWORD = "王国之泪"
-MAX_SCORE = 75
+MAX_SCORE = 60
 # ======================
 
 
