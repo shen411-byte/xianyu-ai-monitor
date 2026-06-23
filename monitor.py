@@ -2,76 +2,39 @@ import requests
 
 # ====== 只改这里 ======
 SCKEY = "SCT366877TkcjPwBYTLfxaz5oD3jF8Xru6"
-KEYWORD = "王国之泪"
+
 MAX_SCORE = 60
 # ======================
 
 
-def send_wechat(title, content):
-    url = f"https://sctapi.ftqq.com/{SCKEY}.send"
-    requests.post(url, data={"title": title, "desp": content})
+def run():
+    KEYWORDS = [
+        "王国之泪 switch",
+        "勇者斗恶龙I&II switch"
 
-
-def fetch_items():
-    # 云端简化模拟数据（后面可升级真实闲鱼抓取）
-    return [
-        {"title": "Switch 王国之泪 盒说全 急出", "price": 260},
-        {"title": "塞尔达 仅卡盒 无卡", "price": 180},
-        {"title": "王国之泪 实拍 完整盒装", "price": 240},
     ]
 
+    result_map = {}
 
-def score(item):
-    text = item["title"]
-    price = item["price"]
+    for kw in KEYWORDS:
+        items = fetch_items(kw)
 
-    s = 50
+        if not items:
+            continue
 
-    # 价格评分（假设均价300）
-    s += (300 - price) / 300 * 40
+        min_item = min(items, key=lambda x: x["price"])
+        result_map[kw] = min_item
 
-    # 风险扣分
-    if "无卡" in text:
-        s -= 40
-    if "仅卡盒" in text:
-        s -= 40
+    content = "🔥 各商品最低价汇总\n\n"
 
-    # 加分项
-    if "实拍" in text:
-        s += 10
-    if "盒说全" in text:
-        s += 10
+    for kw, item in result_map.items():
+        content += f"""
+🎮 {kw}
+💰 最低价：¥{item['price']}
+📌 {item['title']}
+🔗 {item.get('url','')}
 
-    return max(0, min(100, s))
-
-
-def run():
-    print("🚀 running monitor...")
-
-    items = fetch_items()
-
-    best = None
-    best_score = 0
-
-    for item in items:
-        s = score(item)
-        if s > best_score:
-            best_score = s
-            best = item
-
-    print("最高评分:", best_score)
-
-    if best_score >= MAX_SCORE:
-        send_wechat(
-            "🔥 AI捡漏推荐",
-            f"""
-标题：{best['title']}
-价格：¥{best['price']}
-评分：{best_score}
-
-AI判断：值得买 ✔
+-------------------
 """
-        )
 
-
-run()
+    send_wechat("🎯 多商品最低价监控", content)
