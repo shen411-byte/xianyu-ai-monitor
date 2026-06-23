@@ -11,59 +11,72 @@ MAX_PRICE = 300
 # ======================
 
 
+
+
 def send_wechat(title, content):
     url = f"https://sctapi.ftqq.com/{SCKEY}.send"
     requests.post(url, data={"title": title, "desp": content})
 
 
-# ===== 真实闲鱼抓取 =====
+# ======================
+# 稳定抓取（增强版）
+# ======================
 def fetch_items(keyword):
     url = f"https://www.goofish.com/search?q={keyword}"
 
     items = []
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
 
-        page.goto(url)
-        page.wait_for_timeout(5000)
+            page.goto(url, timeout=60000)
+            page.wait_for_timeout(5000)
 
-        # ⚠️ 闲鱼页面结构可能变，这里是“通用抓法”
-        cards = page.query_selector_all("a")
+            cards = page.query_selector_all("a")
 
-        for c in cards:
-            try:
-                text = c.inner_text()
+            for c in cards:
+                try:
+                    text = c.inner_text()
 
-                if "¥" not in text:
+                    if "¥" not in text:
+                        continue
+
+                    price_part = text.split("¥")[-1].split("\n")[0]
+                    price = float(price_part.replace(",", "").strip())
+
+                    # 过滤异常价格
+                    if price <= 0 or price > 10000:
+                        continue
+
+                    items.append({
+                        "title": text[:80],
+                        "price": price,
+                        "url": c.get_attribute("href")
+                    })
+                except:
                     continue
 
-                price_part = text.split("¥")[-1].split("\n")[0]
-                price = float(price_part.replace(",", "").strip())
+            browser.close()
 
-                if price <= 0:
-                    continue
-
-                items.append({
-                    "title": text[:80],
-                    "price": price,
-                    "url": c.get_attribute("href")
-                })
-            except:
-                continue
-
-        browser.close()
+    except Exception as e:
+        print(f"❌ 抓取失败：{keyword}", e)
 
     return items
 
 
-# ===== 主逻辑：多商品独立最低价 =====
+# ======================
+# 主逻辑（稳定版）
+# ======================
 def run():
     result_map = {}
+    debug_log = []
 
     for kw in KEYWORDS:
         items = fetch_items(kw)
+
+        debug_log.append(f"{kw} → {len(items)}条")
 
         if not items:
             continue
@@ -71,20 +84,34 @@ def run():
         min_item = min(items, key=lambda x: x["price"])
         result_map[kw] = min_item
 
-    # ===== 拼微信内容 =====
-    content = "🔥 闲鱼多商品最低价监控\n\n"
+    # ======================
+    # 🔥 保底机制（防空消息）
+    # ======================
+    if not result_map:
+        send_wechat(
+            "⚠️ 闲鱼监控提醒",
+            "本次未抓到任何有效数据\n\n可能原因：\n- 页面结构变化\n- 网络延迟\n- 被风控\n\n调试信息：\n" + "\n".join(debug_log)
+        )
+        return
+
+    # ======================
+    # 正常内容拼接
+    # ======================
+    content = "🔥 闲鱼多商品最低价（稳定版）\n\n"
 
     for kw, item in result_map.items():
         content += f"""
 🎮 {kw}
-💰 最低价：¥{item['price']}
+💰 ¥{item['price']}
 📌 {item['title']}
 🔗 {item.get('url','')}
 
 ------------------
 """
 
-    send_wechat("🎯 闲鱼实时最低价", content)
+    content += "\n📊 调试信息：\n" + "\n".join(debug_log)
+
+    send_wechat("🎯 闲鱼稳定监控", content)
 
 
 if __name__ == "__main__":
