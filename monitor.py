@@ -26,42 +26,39 @@ def fetch_items(keyword):
 
     items = []
 
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-            page.goto(url, timeout=60000)
-            page.wait_for_timeout(5000)
+        page.goto(url, timeout=60000)
+        page.wait_for_timeout(6000)
 
-            cards = page.query_selector_all("a")
+        # ⭐关键修复：不要用 a，全局改为 text 匹配
+        content = page.content()
 
-            for c in cards:
-                try:
-                    text = c.inner_text()
+        # 简单兜底抓取（稳定版策略）
+        import re
 
-                    if "¥" not in text:
-                        continue
+        matches = re.findall(r"¥\s?(\d+\.?\d*)", content)
 
-                    price_part = text.split("¥")[-1].split("\n")[0]
-                    price = float(price_part.replace(",", "").strip())
+        titles = re.findall(r'["\']([^"\']{5,80})["\']', content)
 
-                    # 过滤异常价格
-                    if price <= 0 or price > 10000:
-                        continue
+        for i in range(min(len(matches), 20)):
+            try:
+                price = float(matches[i])
 
-                    items.append({
-                        "title": text[:80],
-                        "price": price,
-                        "url": c.get_attribute("href")
-                    })
-                except:
+                if price <= 0 or price > 10000:
                     continue
 
-            browser.close()
+                items.append({
+                    "title": titles[i] if i < len(titles) else "未知商品",
+                    "price": price,
+                    "url": url
+                })
+            except:
+                continue
 
-    except Exception as e:
-        print(f"❌ 抓取失败：{keyword}", e)
+        browser.close()
 
     return items
 
