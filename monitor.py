@@ -22,45 +22,39 @@ def send_wechat(title, content):
 # 稳定抓取（增强版）
 # ======================
 def fetch_items(keyword):
+    import requests
+    import re
+
     url = f"https://www.goofish.com/search?q={keyword}"
 
-    items = []
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+        text = r.text
 
-        page.goto(url, timeout=60000)
-        page.wait_for_timeout(6000)
+        # 抓价格
+        prices = re.findall(r"¥\s?(\d+\.?\d*)", text)
 
-        # ⭐关键修复：不要用 a，全局改为 text 匹配
-        content = page.content()
-
-        # 简单兜底抓取（稳定版策略）
-        import re
-
-        matches = re.findall(r"¥\s?(\d+\.?\d*)", content)
-
-        titles = re.findall(r'["\']([^"\']{5,80})["\']', content)
-
-        for i in range(min(len(matches), 20)):
+        items = []
+        for p in prices[:20]:
             try:
-                price = float(matches[i])
-
-                if price <= 0 or price > 10000:
-                    continue
-
+                price = float(p)
                 items.append({
-                    "title": titles[i] if i < len(titles) else "未知商品",
+                    "title": keyword,
                     "price": price,
                     "url": url
                 })
             except:
                 continue
 
-        browser.close()
+        return items
 
-    return items
+    except Exception as e:
+        print("fetch error:", e)
+        return []
 
 
 # ======================
